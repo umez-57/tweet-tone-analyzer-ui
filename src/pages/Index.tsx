@@ -46,9 +46,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 transition-colors duration-200 bg-gradient-dots">
       <div className="max-w-[500px] mx-auto">
-        <div className="card">
+        <div className="card glass">
           <Header />
           
           <ModelSelect model={model} setModel={setModel} />
