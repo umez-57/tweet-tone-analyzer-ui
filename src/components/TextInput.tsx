@@ -1,46 +1,50 @@
+/* only *one* new prop added: maxLines & helper notice */
 
-import React, { useState, useRef, KeyboardEvent } from 'react';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import React, { useRef, KeyboardEvent } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Button }   from "@/components/ui/button";
+import { X }        from "lucide-react";
 
-type TextInputProps = {
+type Props = {
   text: string;
-  setText: (text: string) => void;
+  setText: (t: string) => void;
   onClassify: () => void;
+  maxLines?: number;                 // NEW – defaults to 1‑line mode
 };
 
-const TextInput = ({ text, setText, onClassify }: TextInputProps) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+const TextInput = ({ text, setText, onClassify, maxLines = 1 }: Props) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Check for Ctrl+Enter or Cmd+Enter
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+  const handleKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       onClassify();
     }
   };
 
-  const clearText = () => {
-    setText('');
-    textareaRef.current?.focus();
+  const clear = () => {
+    setText("");
+    ref.current?.focus();
   };
+
+  const lines = text.split(/\r?\n/).filter((l) => l.trim()).length;
 
   return (
     <div className="mb-4 relative">
-      <label htmlFor="text-input" className="block text-sm font-medium text-gray-700 mb-1">
-        Text
-      </label>
+      <label className="block text-sm font-medium mb-1">Text{maxLines > 1 && "s"}</label>
+
       <div className="relative">
         <Textarea
-          ref={textareaRef}
-          id="text-input"
+          ref={ref}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type a tweet or any short sentence..."
+          placeholder={
+            maxLines === 1
+              ? "Type a tweet or sentence…"
+              : `Up to ${maxLines} lines – each line will be classified`
+          }
           className="min-h-[120px] pr-10"
-          onKeyDown={handleKeyDown}
-          aria-label="Text to analyze"
+          onKeyDown={handleKey}
         />
         {text && (
           <Button
@@ -48,16 +52,19 @@ const TextInput = ({ text, setText, onClassify }: TextInputProps) => {
             variant="ghost"
             size="icon"
             className="absolute right-2 top-2 h-6 w-6"
-            onClick={clearText}
+            onClick={clear}
             aria-label="Clear text"
           >
             <X className="h-4 w-4" />
           </Button>
         )}
       </div>
-      <p className="text-xs text-gray-500 mt-1">
-        Press Ctrl+Enter (or Cmd+Enter) to classify
-      </p>
+
+      {maxLines > 1 && (
+        <p className="mt-1 text-xs text-gray-500">
+          {lines}/{maxLines} lines&nbsp;• Ctrl/⌘ + Enter to run
+        </p>
+      )}
     </div>
   );
 };

@@ -1,50 +1,62 @@
+import { cn } from "@/lib/utils";
 
-import React from 'react';
-import { cn } from '@/lib/utils';
+type Sentiment = "positive" | "neutral" | "negative" | null;
+type Probs = Record<string, number> | null;
 
-type SentimentLabel = "positive" | "neutral" | "negative" | null;
-
-type ResultCardProps = {
-  sentiment: SentimentLabel;
+type Props = {
+  sentiment: Sentiment;
+  probs: Probs;
 };
 
-const ResultCard = ({ sentiment }: ResultCardProps) => {
+/* colour + emoji palette */
+const palette: Record<
+  "positive" | "neutral" | "negative",
+  { emoji: string; bar: string; txt: string }
+> = {
+  positive: { emoji: "💚", bar: "bg-positive", txt: "Positive" },
+  neutral:  { emoji: "🟡", bar: "bg-neutral" , txt: "Neutral"  },
+  negative: { emoji: "❤️", bar: "bg-negative", txt: "Negative" },
+};
+
+const ResultCard = ({ sentiment, probs }: Props) => {
   if (!sentiment) return null;
 
-  const sentimentConfig = {
-    positive: {
-      emoji: '💚',
-      label: 'Positive',
-      bgColor: 'bg-positive/10',
-      textColor: 'text-positive',
-      borderColor: 'border-positive/20',
-    },
-    neutral: {
-      emoji: '🟡',
-      label: 'Neutral',
-      bgColor: 'bg-neutral/10',
-      textColor: 'text-neutral',
-      borderColor: 'border-neutral/20',
-    },
-    negative: {
-      emoji: '❤️',
-      label: 'Negative',
-      bgColor: 'bg-negative/10',
-      textColor: 'text-negative',
-      borderColor: 'border-negative/20',
-    },
-  };
+  const cfg = palette[sentiment];
 
-  const config = sentimentConfig[sentiment];
+  /* decide which bars to draw — skip any prob ≤ 0   */
+  const barKeys = probs
+    ? (Object.keys(probs) as Array<keyof typeof probs>).filter(
+        (k) => probs[k]! > 1e-4
+      )
+    : [];
 
   return (
-    <div className={cn("mt-6 card border animate-fade-in", config.borderColor)}>
-      <div className="flex flex-col items-center justify-center p-4">
-        <div className="animate-scale-in text-4xl mb-2">{config.emoji}</div>
-        <div className={cn("px-4 py-1 rounded-full font-medium", config.bgColor, config.textColor)}>
-          {config.label}
-        </div>
+    <div className="mt-6 card border animate-fade-in p-4">
+      {/* headline */}
+      <div className="flex flex-col items-center">
+        <div className="text-4xl mb-2">{cfg.emoji}</div>
+        <div className="font-semibold">{cfg.txt}</div>
       </div>
+
+      {/* probability bars */}
+      {probs && barKeys.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {barKeys.map((k) => (
+            <div key={k}>
+              <div className="flex justify-between text-xs mb-0.5">
+                <span className="capitalize">{k}</span>
+                <span>{(probs[k]! * 100).toFixed(1)}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-200 rounded">
+                <div
+                  className={cn("h-2 rounded", palette[k].bar)}
+                  style={{ width: `${probs[k]! * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
