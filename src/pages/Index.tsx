@@ -17,37 +17,42 @@ import {
   SelectTrigger, SelectValue
 } from "@/components/ui/select";
 
+const BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
 /* ------------------------------------------------------------------ */
 /* -------------------------- API helpers --------------------------- */
 /* ------------------------------------------------------------------ */
 const singleApi = (body: { text: string; model: Model }) =>
-  fetch("/api/predict", {
-    method : "POST",
+  fetch(`${BASE}/predict`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify(body),
-  }).then(async r => {
+    body: JSON.stringify(body),
+  }).then(async (r) => {
     if (!r.ok) throw new Error((await r.text()) || `API ${r.status}`);
-    return r.json();   // {id,label,probs}
+    return r.json();
   });
 
 const batchApi = (body: { texts: string[]; model: Model }) =>
-  fetch("/api/batch_predict", {
-    method : "POST",
+  fetch(`${BASE}/batch_predict`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify(body),
-  }).then(async r => {
+    body: JSON.stringify(body),
+  }).then(async (r) => {
     if (!r.ok) throw new Error((await r.text()) || `API ${r.status}`);
-    return r.json();   // {results:[...], overall:{…}}
+    return r.json();
   });
 
-const feedbackApi = (body: { id: string; correct: boolean; corrected_label?: string }) =>
-  fetch("/api/feedback", {
-    method : "POST",
+const feedbackApi = (body: {
+  id: string;
+  correct: boolean;
+  corrected_label?: string;
+}) =>
+  fetch(`${BASE}/feedback`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
-    body   : JSON.stringify(body),
-  }).then(async r => {
+    body: JSON.stringify(body),
+  }).then(async (r) => {
     if (!r.ok) throw new Error((await r.text()) || `API ${r.status}`);
-    return r.json();   // {status:"saved"}
+    return r.json();
   });
 
 /* ------------------------------------------------------------------ */
