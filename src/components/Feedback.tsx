@@ -1,53 +1,63 @@
-/* src/components/FeedbackCard.tsx */
-import { useEffect, useState } from "react";
+/* ───────── src/components/FeedbackCard.tsx ────────────────────────────── */
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn }    from "@/lib/utils";
 
 type Props = {
   predictionId: string;
-  onDone: () => void;                // remove the card after submit
+  /** called after feedback is successfully sent – lets the parent hide the card */
+  onDone: () => void;
 };
 
 export const FeedbackCard = ({ predictionId, onDone }: Props) => {
+  /** ui stage: first ask “correct?” then (if “No”) ask for the right label */
   const [stage, setStage] = useState<"ask" | "label">("ask");
 
-  /* chosen values */
-  const [correct, setCorrect] = useState<null | boolean>(null);
+  /* user’s choices ------------------------------------------------------- */
+  const [correct, setCorrect] = useState<boolean | null>(null);
   const [chosenLabel, setChosenLabel] =
     useState<"positive" | "neutral" | "negative" | null>(null);
 
-  /* submit to backend */
+  /* POST to /api/feedback ------------------------------------------------ */
   const send = async () => {
+    /* build payload so we don’t send corrected_label when it’s not needed */
+    const payload: Record<string, unknown> = {
+      id: predictionId,
+      correct,
+    };
+    if (correct === false) payload.corrected_label = chosenLabel;
+
     await fetch("/api/feedback", {
-      method: "POST",
+      method : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: predictionId,
-        correct: correct,
-        corrected_label: chosenLabel,
-      }),
+      body   : JSON.stringify(payload),
     });
-    onDone();
+
+    onDone();                       // tell the caller to hide the card
   };
 
+  /* ui ------------------------------------------------------------------- */
   return (
     <div className="mt-6 card border p-4 animate-fade-in">
+      {/* ───────── First step: ask Yes / No ─────────────────────────────── */}
       {stage === "ask" && (
         <>
           <p className="mb-4 text-sm font-medium">
             Was this prediction correct?
           </p>
+
           <div className="flex gap-3">
             <Button
               variant="outline"
               className="flex-1"
               onClick={() => {
                 setCorrect(true);
-                send();
+                send();             // no extra label needed
               }}
             >
               Yes
             </Button>
+
             <Button
               variant="outline"
               className="flex-1"
@@ -62,11 +72,13 @@ export const FeedbackCard = ({ predictionId, onDone }: Props) => {
         </>
       )}
 
+      {/* ───────── Second step: if “No”, ask for the right label ────────── */}
       {stage === "label" && (
         <>
           <p className="mb-4 text-sm font-medium">
             Thanks! What should it be?
           </p>
+
           <div className="flex gap-2 flex-wrap">
             {(["positive", "neutral", "negative"] as const).map((l) => (
               <Button
@@ -82,6 +94,7 @@ export const FeedbackCard = ({ predictionId, onDone }: Props) => {
               </Button>
             ))}
           </div>
+
           <Button
             className="mt-4 w-full"
             disabled={!chosenLabel}

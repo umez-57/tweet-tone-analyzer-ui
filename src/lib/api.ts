@@ -1,66 +1,86 @@
+// ────────────────────────────────────────────────────────────────
 // src/lib/api.ts
+// central place for every call the front‑end makes to FastAPI
+// ────────────────────────────────────────────────────────────────
 import { useMutation } from "@tanstack/react-query";
 
-/* ─── types that mirror backend/app.py ───────────────────────────── */
-
+/*─────────────────────── shared types ──────────────────────────*/
 export type Sentiment = "positive" | "neutral" | "negative";
 
-export type Model =
-  | "roberta"
-  | "bertweet"
-  | "roberta2L"   // 2‑label RoBERTa checkpoint
-  | "bertweet2L"; // 2‑label BERTweet checkpoint
+/** returned by /predict  and inside each element of /batch_predict */
+export interface Probabilities {
+  negative: number;
+  positive: number;
+  /** present only for 3‑label models */
+  neutral?: number;
+}
 
-const BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? ""; 
+export interface SingleResult {
+  id: string;                 // uuid from Supabase
+  label: Sentiment;           // predicted class
+  probs: Probabilities;       // class probabilities
+  /**  text is included only in batch responses */
+  text?: string;
+}
 
-/* single‑text request ------------------------------------------- */
+/*───────────── request bodies (what we POST) ───────────────────*/
 export interface PredictBody {
   text: string;
-  model: Model;
+  model: "roberta" | "bertweet" | "roberta2L" | "bertweet2L";
 }
 
-export interface PredictResponse {
-  id: string;                            // uuid for feedback endpoint
-  label: Sentiment;
-  probs: Record<string, number>;         // e.g. {negative:0.12, …}
-}
-
-/* batch request  (≤ 10 lines) ----------------------------------- */
 export interface BatchBody {
   texts: string[];
-  model: Model;
+  model: PredictBody["model"];
 }
+
+export interface FeedbackBody {
+  id: string;
+  correct: boolean;         // “was the prediction correct?”
+  /** if correct === false you may send the class the user picked  */
+  corrected_label?: Sentiment;
+}
+
+/*───────────── responses (what we GET back) ────────────────────*/
+export interface PredictResponse extends SingleResult {}
 
 export interface BatchResponse {
-  overall: { label: Sentiment; probs: Record<string, number> };
-  results: Array<{
-    id: string;
-    text: string;
-    label: Sentiment;
-    probs: Record<string, number>;
-  }>;
+  overall: Omit<SingleResult, "id">; // aggregate line (no uuid)
+  results: SingleResult[];           // per‑tweet results
 }
 
-/* ─── React‑Query hooks  ───────────────────────────────────────── */
+/*──────────────── hooks – ready to use in pages/components ─────*/
+const json = async <T>(r: Response) => {
+  if (!r.ok) throw new Error((await r.text()) || `API ${r.status}`);
+  return r.json() as Promise<T>;
+};
 
+/** POST /predict  (single sentence) */
 export const usePredict = () =>
-  useMutation<PredictResponse, Error, PredictBody>(async (body) => {
-    const res = await fetch(`${BASE}/predict`, {
+  useMutation<PredictResponse, Error, PredictBody>((body) =>
+    fetch("/api/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error((await res.text()) || `API ${res.status}`);
-    return res.json();
-  });
+    }).then(json<PredictResponse>)
+  );
 
+/** POST /batch_predict  (≤ 10 sentences) */
 export const useBatchPredict = () =>
-  useMutation<BatchResponse, Error, BatchBody>(async (body) => {
-    const res = await fetch(`${BASE}/batch_predict`, {
+  useMutation<BatchResponse, Error, BatchBody>((body) =>
+    fetch("/api/batch_predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error((await res.text()) || `API ${res.status}`);
-    return res.json();
-  });
+    }).then(json<BatchResponse>)
+  );
+
+/** POST /feedback  (send user feedback on a previous prediction) */
+export const useSendFeedback = () =>
+  useMutation<unknown, Error, FeedbackBody>((body) =>
+    fetch("/api/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(json<unknown>)
+  );
