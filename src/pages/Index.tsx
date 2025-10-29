@@ -4,16 +4,14 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Twitter } from "lucide-react";
 
-import Header      from "@/components/Header";
-import Footer      from "@/components/Footer";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import ModelSelect, { type Model } from "@/components/ModelSelect";
-import TextInput   from "@/components/TextInput";
+import TextInput from "@/components/TextInput";
 import PredictButton from "@/components/PredictButton";
-import ResultCard  from "@/components/ResultCard";
-import BatchList   from "@/components/BatchList";
-import FeedbackCard, {
-  type FeedbackPayload,
-} from "@/components/FeedbackCard"; // ✅ correct import!
+import ResultCard from "@/components/ResultCard";
+import BatchList from "@/components/BatchList";
+import FeedbackCard, { type FeedbackPayload } from "@/components/FeedbackCard";
 
 import {
   Select,
@@ -88,8 +86,8 @@ const AnalysisCard = ({
 
 const Index = () => {
   const [model, setModel] = useState<Model>("roberta");
-  const [mode,  setMode]  = useState<"single" | "batch">("single");
-  const [text,  setText]  = useState("");
+  const [mode, setMode] = useState<"single" | "batch">("single");
+  const [text, setText] = useState("");
 
   /* results --------------------------------------------------- */
   const [overall, setOverall] =
@@ -99,7 +97,7 @@ const Index = () => {
   >([]);
 
   /* feedback popup state -------------------------------------- */
-  const [predId,       setPredId]       = useState<string | null>(null);
+  const [predId, setPredId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
   /* ---------------- prediction mutation ---------------------- */
@@ -136,7 +134,7 @@ const Index = () => {
     onError: (e: any) => toast.error(e.message || "Couldn't save feedback"),
   });
 
-  /* trigger popup 3 s after single‑mode prediction ------------- */
+  /* trigger popup 3 s after single-mode prediction ------------- */
   useEffect(() => {
     if (predId && mode === "single") {
       const t = setTimeout(() => setShowFeedback(true), 3000);
@@ -148,14 +146,7 @@ const Index = () => {
   const run = () => {
     if (!text.trim()) return;
 
-    if (mode === "batch") {
-      const lines = text.split(/\r?\n/).filter(Boolean);
-      if (lines.length > 10) {
-        toast.error("Maximum 10 lines");
-        return;
-      }
-    }
-
+    // 🔥 removed the line limit check completely
     setOverall(null);
     setItems([]);
     setShowFeedback(false);
@@ -163,6 +154,9 @@ const Index = () => {
 
     predict();
   };
+
+  /* count lines for display ----------------------------------- */
+  const lineCount = text.split(/\r?\n/).filter(Boolean).length;
 
   /* ---------------------------------------------------------------- UI */
   return (
@@ -201,7 +195,7 @@ const Index = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="single">Single tweet</SelectItem>
-                  <SelectItem value="batch">Batch (≤ 10 tweets)</SelectItem>
+                  <SelectItem value="batch">Batch (multi-line)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -212,8 +206,16 @@ const Index = () => {
             text={text}
             setText={setText}
             onClassify={run}
-            maxLines={mode === "batch" ? 10 : 1}
+            maxLines={mode === "batch" ? undefined : 1}
           />
+
+          {/* ✅ line counter below textarea */}
+          {mode === "batch" && (
+            <div className="text-sm text-gray-500 mt-2">
+              {lineCount} line{lineCount !== 1 ? "s" : ""} entered
+            </div>
+          )}
+
           <PredictButton
             isLoading={isLoading}
             disabled={!text.trim()}
